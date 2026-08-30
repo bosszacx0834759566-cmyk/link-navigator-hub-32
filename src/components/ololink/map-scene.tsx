@@ -139,11 +139,7 @@ function NodeGlyph({ kind, color }: { kind: AssetKind; color: string }) {
  * equirectangularly and optimised for network routing clarity.
  */
 export function MapScene({ state }: { state: OloLinkState }) {
-  const { links, route, profile, selection, layers, techFilter, telemetry } = state;
-
-  // scenarios with a clear sky still show a faint ambient cloud field so the
-  // weather layer toggle always has a visible effect
-  const weatherCells = profile.weather.length ? profile.weather : AMBIENT_CELLS;
+  const { route, selection, layers } = state;
 
   // shared scene clock -> live satellite ground tracks
   const [t, setT] = useState(() => sceneTime());
@@ -164,15 +160,7 @@ export function MapScene({ state }: { state: OloLinkState }) {
     return map;
   }, [t]);
 
-  const routeIds = useMemo(() => new Set(route.map((s) => s.id)), [route]);
-  const visibleLinks = useMemo(
-    () => links.filter((l) => techFilter[l.segment.tech]),
-    [links, techFilter]
-  );
-
   const selectedAsset = selection?.type === 'asset' ? selection.id : null;
-  const selectedLink = selection?.type === 'link' ? selection.id : null;
-  const activeRegion = selectedAsset ? ASSET_BY_ID[selectedAsset]?.region ?? null : null;
 
   /* ------------------------------------------------ flattened earth base */
   const [basemap, setBasemap] = useState<string | null>(null);
