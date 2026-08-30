@@ -2090,6 +2090,8 @@ function SceneContent({
       
 
       <LodDriver onChange={setLod} />
+      <LabelProjector tier={lod.level} />
+
 
       <Suspense fallback={null}>
         <Earth />
