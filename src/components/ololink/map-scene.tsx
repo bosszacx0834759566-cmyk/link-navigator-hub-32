@@ -7,16 +7,12 @@ import { earthBasemap } from '@/lib/earth-basemap';
 import { cn } from '@/lib/utils';
 import type { OloLinkState } from '@/hooks/use-ololink';
 import {
-  AMBIENT_CELLS,
   ASSETS,
   ASSET_BY_ID,
-  STATUS_META,
-  TECH_META,
   type Asset,
   type AssetKind,
 } from '@/lib/ololink';
-import { REGIONS } from '@/lib/layers';
-import { MAP_H, MAP_W, arcPath, livePosition, project, sceneTime, type LatLon } from '@/lib/geo2d';
+import { MAP_H, MAP_W, livePosition, project, sceneTime, type LatLon } from '@/lib/geo2d';
 
 const KIND_COLOR: Record<AssetKind, string> = {
   satellite: '#7dd3fc',
@@ -25,8 +21,6 @@ const KIND_COLOR: Record<AssetKind, string> = {
   ground: '#34d399',
   customer: '#e2e8f0',
 };
-
-const WEATHER_COLOR = { CLOUD: '#94a3b8', RAIN: '#38bdf8', STORM: '#f472b6' } as const;
 
 /** Nodes render at slightly different sizes so the altitude tiers stay readable. */
 /** vertical label stagger keeps the surface cluster (GS / customer / drone) legible */
@@ -272,16 +266,6 @@ export function MapScene({ state }: { state: OloLinkState }) {
     const o = PIXEL_OFFSET[asset.kind];
     // pixel fan-out is a screen-space nicety — undo it as the operator zooms in
     return { x: p.x + o.x * inv, y: p.y + o.y * inv };
-  };
-
-  /** keep link endpoints on the same side of the antimeridian */
-  const pairPoints = (fromId: string, toId: string) => {
-    const a = pointOf(fromId);
-    const b = pointOf(toId);
-    if (!a || !b) return null;
-    const shifted = { ...b };
-    if (Math.abs(shifted.x - a.x) > MAP_W / 2) shifted.x += shifted.x > a.x ? -MAP_W : MAP_W;
-    return { a, b: shifted };
   };
 
   return (
