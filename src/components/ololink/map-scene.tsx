@@ -374,9 +374,7 @@ export function MapScene({ state }: { state: OloLinkState }) {
             );
           })}
 
-              </g>
-            );
-          })}
+
 
 
         </g>
