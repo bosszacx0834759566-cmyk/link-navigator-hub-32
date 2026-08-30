@@ -342,9 +342,6 @@ export function MapScene({ state }: { state: OloLinkState }) {
             if (!p) return null;
             const color = KIND_COLOR[a.kind];
             const selected = selectedAsset === a.id;
-            const onRoute = route.some(
-              (s) => s.from === a.id || s.to === a.id
-            );
             return (
               <g
                 key={a.id}
@@ -355,10 +352,8 @@ export function MapScene({ state }: { state: OloLinkState }) {
                   if (!dragged()) state.select({ type: 'asset', id: a.id });
                 }}
               >
-                {(selected || onRoute) && (
-                  <circle r={11} fill="none" stroke={color} strokeOpacity={selected ? 0.9 : 0.5} strokeWidth={0.9} />
-                )}
                 <NodeGlyph kind={a.kind} color={color} />
+
                 {layers.labels && (
                   <text
                     y={LABEL_DY[a.kind]}
