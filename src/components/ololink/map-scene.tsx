@@ -336,7 +336,7 @@ export function MapScene({ state }: { state: OloLinkState }) {
           />
 
           {/* ------------------------------------------------------- nodes */}
-          {ASSETS.filter((a) => a.kind === 'satellite' || a.kind === 'haps' || a.kind === 'drone').map((a) => {
+          {ASSETS.filter((a) => a.kind === 'satellite' || a.kind === 'haps' || a.kind === 'drone' || a.kind === 'ground').map((a) => {
 
             const p = pointOf(a.id);
             if (!p) return null;
@@ -358,7 +358,6 @@ export function MapScene({ state }: { state: OloLinkState }) {
                 {(selected || onRoute) && (
                   <circle r={11} fill="none" stroke={color} strokeOpacity={selected ? 0.9 : 0.5} strokeWidth={0.9} />
                 )}
-                <circle r={9} fill="#03060d" fillOpacity={0.45} />
                 <NodeGlyph kind={a.kind} color={color} />
                 {layers.labels && (
                   <text
@@ -367,14 +366,14 @@ export function MapScene({ state }: { state: OloLinkState }) {
                     fontSize={7}
                     fill={selected ? '#e2e8f0' : color}
                     fillOpacity={selected ? 1 : 0.85}
-                    style={{ paintOrder: 'stroke' }}
-                    stroke="#03060d"
-                    strokeWidth={2}
-                    strokeOpacity={0.85}
                   >
                     {a.name}
                   </text>
                 )}
+              </g>
+            );
+          })}
+
               </g>
             );
           })}
