@@ -7,16 +7,12 @@ import { earthBasemap } from '@/lib/earth-basemap';
 import { cn } from '@/lib/utils';
 import type { OloLinkState } from '@/hooks/use-ololink';
 import {
-  AMBIENT_CELLS,
   ASSETS,
   ASSET_BY_ID,
-  STATUS_META,
-  TECH_META,
   type Asset,
   type AssetKind,
 } from '@/lib/ololink';
-import { REGIONS } from '@/lib/layers';
-import { MAP_H, MAP_W, arcPath, livePosition, project, sceneTime, type LatLon } from '@/lib/geo2d';
+import { MAP_H, MAP_W, livePosition, project, sceneTime, type LatLon } from '@/lib/geo2d';
 
 const KIND_COLOR: Record<AssetKind, string> = {
   satellite: '#7dd3fc',
@@ -25,8 +21,6 @@ const KIND_COLOR: Record<AssetKind, string> = {
   ground: '#34d399',
   customer: '#e2e8f0',
 };
-
-const WEATHER_COLOR = { CLOUD: '#94a3b8', RAIN: '#38bdf8', STORM: '#f472b6' } as const;
 
 /** Nodes render at slightly different sizes so the altitude tiers stay readable. */
 /** vertical label stagger keeps the surface cluster (GS / customer / drone) legible */
@@ -139,11 +133,7 @@ function NodeGlyph({ kind, color }: { kind: AssetKind; color: string }) {
  * equirectangularly and optimised for network routing clarity.
  */
 export function MapScene({ state }: { state: OloLinkState }) {
-  const { links, route, profile, selection, layers, techFilter, telemetry } = state;
-
-  // scenarios with a clear sky still show a faint ambient cloud field so the
-  // weather layer toggle always has a visible effect
-  const weatherCells = profile.weather.length ? profile.weather : AMBIENT_CELLS;
+  const { route, selection, layers } = state;
 
   // shared scene clock -> live satellite ground tracks
   const [t, setT] = useState(() => sceneTime());
@@ -164,15 +154,7 @@ export function MapScene({ state }: { state: OloLinkState }) {
     return map;
   }, [t]);
 
-  const routeIds = useMemo(() => new Set(route.map((s) => s.id)), [route]);
-  const visibleLinks = useMemo(
-    () => links.filter((l) => techFilter[l.segment.tech]),
-    [links, techFilter]
-  );
-
   const selectedAsset = selection?.type === 'asset' ? selection.id : null;
-  const selectedLink = selection?.type === 'link' ? selection.id : null;
-  const activeRegion = selectedAsset ? ASSET_BY_ID[selectedAsset]?.region ?? null : null;
 
   /* ------------------------------------------------ flattened earth base */
   const [basemap, setBasemap] = useState<string | null>(null);
@@ -286,16 +268,6 @@ export function MapScene({ state }: { state: OloLinkState }) {
     return { x: p.x + o.x * inv, y: p.y + o.y * inv };
   };
 
-  /** keep link endpoints on the same side of the antimeridian */
-  const pairPoints = (fromId: string, toId: string) => {
-    const a = pointOf(fromId);
-    const b = pointOf(toId);
-    if (!a || !b) return null;
-    const shifted = { ...b };
-    if (Math.abs(shifted.x - a.x) > MAP_W / 2) shifted.x += shifted.x > a.x ? -MAP_W : MAP_W;
-    return { a, b: shifted };
-  };
-
   return (
     <div className="relative h-full w-full bg-[#03060d]">
       <svg
@@ -363,95 +335,9 @@ export function MapScene({ state }: { state: OloLinkState }) {
             preserveAspectRatio="none"
           />
 
-          {/* ---------------------------------------------- weather layer */}
-          {layers.weather &&
-            weatherCells.map((c) => {
-              const p = project(c.lat, c.lon);
-              const r = c.size * MAP_W * 0.5;
-              const fill =
-                c.kind === 'STORM' ? 'url(#wx-storm)' : c.kind === 'RAIN' ? 'url(#wx-rain)' : 'url(#wx-cloud)';
-              return (
-                <g key={c.id}>
-                  <circle cx={p.x} cy={p.y} r={r} fill={fill} />
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r={r * 0.55}
-                    fill="none"
-                    stroke={WEATHER_COLOR[c.kind]}
-                    strokeOpacity={0.35}
-                    strokeWidth={0.6 * inv}
-                    strokeDasharray={`${3 * inv} ${3 * inv}`}
-                  />
-                </g>
-              );
-            })}
-
-          {/* ------------------------------------------- region footprints */}
-          {REGIONS.map((r) => {
-            const p = project(r.lat, r.lon);
-            return (
-              <circle
-                key={r.id}
-                cx={p.x}
-                cy={p.y}
-                r={r.spread * MAP_W * 0.5}
-                fill="none"
-                stroke={activeRegion === r.id ? '#7dd3fc' : '#3b4a63'}
-                strokeOpacity={activeRegion === r.id ? 0.7 : 0.35}
-                strokeWidth={0.8 * inv}
-                strokeDasharray={`${4 * inv} ${4 * inv}`}
-              />
-            );
-          })}
-
-          {/* --------------------------------------------------- link arcs */}
-          {visibleLinks.map((l) => {
-            const pts = pairPoints(l.segment.from, l.segment.to);
-            if (!pts) return null;
-            const onRoute = layers.routes && routeIds.has(l.segment.id);
-            const color = STATUS_META[l.status].color;
-            const active = selectedLink === l.segment.id;
-            return (
-              <g key={l.segment.id}>
-                <path
-                  d={arcPath(pts.a, pts.b)}
-                  fill="none"
-                  stroke={color}
-                  strokeOpacity={onRoute || active ? 0.95 : 0.4}
-                  strokeWidth={(onRoute || active ? 2.2 : 1.1) * inv}
-                  strokeLinecap="round"
-                  className="cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!dragged()) state.select({ type: 'link', id: l.segment.id });
-                  }}
-                />
-                {onRoute && (
-                  <path
-                    d={arcPath(pts.a, pts.b)}
-                    fill="none"
-                    stroke={TECH_META[l.segment.tech].color}
-                    strokeOpacity={0.85}
-                    strokeWidth={1 * inv}
-                    strokeDasharray={`${5 * inv} ${7 * inv}`}
-                    pointerEvents="none"
-                  >
-                    <animate
-                      attributeName="stroke-dashoffset"
-                      from={12 * inv}
-                      to="0"
-                      dur="1.1s"
-                      repeatCount="indefinite"
-                    />
-                  </path>
-                )}
-              </g>
-            );
-          })}
-
           {/* ------------------------------------------------------- nodes */}
-          {ASSETS.map((a) => {
+          {ASSETS.filter((a) => a.kind === 'satellite' || a.kind === 'haps' || a.kind === 'drone').map((a) => {
+
             const p = pointOf(a.id);
             if (!p) return null;
             const color = KIND_COLOR[a.kind];
